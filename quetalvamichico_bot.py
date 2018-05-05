@@ -7,17 +7,18 @@ import urllib.request
 import vobject
 #import PyICU
 #from change_tz import change_tz
-#from datetime import datetime
+from datetime import datetime
 from telegram import Bot, ParseMode
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler
 
 def message(text):
 	bot = MyBot()
 	bot.send_message(text)
-	print(text)
+	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+'\n'+text+'\n')
 
 class MyBot(Bot):
-	def __init__(self, token='**123456789:tg-token**', chat_id='**987654321**'):
+	# @quetalvamichico_bot
+	def __init__(self, token='**123456789:tg-token-main-bot**', chat_id='**987654321**'):
 		Bot.__init__(self, token)
 		self.chat_id = chat_id
 	def send_message(self, text):
@@ -32,12 +33,6 @@ def brackets(text):
 def from_to(start,end):
 	#TODO2: return '\nsale: '+str(diasale)+' '+bold(horasale)+',\nllega: '+str(diasale)+' '+bold(horallega)
 	return '\nsale: '+str(start)+',\nllega: '+str(end)
-
-def doc_handler(bot, update):
-	if update.effective_message.document.mime_type=='text/calendar':
-		# Si se envían varios archivos a la vez, se queda con el último
-		file = bot.getFile(update.effective_message.document.file_id)
-		file.download('download.ics')
 
 def bus_ics(file):
 	with open(file, encoding="utf-8") as f:
@@ -78,11 +73,12 @@ def tg_uni(bot, update):
 		update.message.reply_text("uso: /uni")
 
 def main():
-	updater = Updater(token='**123456789:tg-token**')
+	# @quetalvamichico_bot
+	updater = Updater(token='**123456789:tg-token-main-bot**')
 	dispatcher = updater.dispatcher
-	dispatcher.add_handler(MessageHandler(Filters.document, doc_handler))
 	dispatcher.add_handler(CommandHandler('uni', tg_uni))
 	dispatcher.add_handler(CommandHandler('bus', tg_bus))
+	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+' - init @quetalvamichico_bot')
 	updater.start_polling()
 	updater.idle()
 
