@@ -12,7 +12,7 @@ this bot (v0.1) has two basic functionalities:
 
 ## TODOs
 
-- [ ] Fix timezone
-- [ ] Format from_to(daystart,hourstart,dayend,hourend)
-- [ ] Add weekday
+- [x] Fix timezone
+- [x] Format from_to(dayStart,timeStart,timeEnd)
+- [x] Add weekday
 - [ ] ping (message when i get home)
