@@ -1,28 +1,70 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# RUN WITH:
-# nohup python3 -u quetalvamichico_bot.py >> quetalvamichico_bot.log &
+# EJECUTAR CON:
+# nohup python3 quetalvamichico_bot.py >> quetalvamichico_bot.log &
 
 import urllib.request
 import vobject
-#import PyICU
-#from change_tz import change_tz
+import locale
 from datetime import datetime
 from telegram import Bot, ParseMode
 from telegram.ext import Updater, CommandHandler
 
-def message(text):
-	bot = MyBot()
-	bot.send_message(text)
-	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+'\n'+text+'\n')
+locale.setlocale(locale.LC_TIME, 'es_ES.utf8') # para tener 'lunes' en lugar de 'Monday'
+tkn = '==123456789:tg-token-USER-BOT=='
+bot = Bot(token=tkn)
+bot.chat_id = '==998877665==' #user-chatId
 
-class MyBot(Bot):
-	# @quetalvamichico_bot
-	def __init__(self, token='**123456789:tg-token-main-bot**', chat_id='**987654321**'):
-		Bot.__init__(self, token)
-		self.chat_id = chat_id
-	def send_message(self, text):
-		super(MyBot, self).send_message(chat_id=self.chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
+def tg_bus(bot,update):
+	try:
+		viaje, dSale, hSale, hLlega = bus_ics('download.ics')
+		message(bold(viaje)+from_to(dSale,hSale,hLlega))
+	except (IndexError, ValueError):
+		update.message.reply_text("uso: /bus")
+
+def tg_uni(bot,update):
+	try:
+		url = '==https://calendar.google.com/calendar/ical/A-URL-FROM-GOOGLE-CALENDAR/basic.ics=='
+		data = uni_ics(url)
+		for event in data:
+			message(parse_event(event))
+	except (IndexError, ValueError):
+		update.message.reply_text("uso: /uni")
+
+def bus_ics(file):
+	with open(file, encoding="utf-8") as f:
+		cal = vobject.readOne(f.read())
+		descr = cal.vevent.summary.value
+		dtstart = cal.vevent.dtstart.value
+		dtend = cal.vevent.dtend.value
+
+		dStart = dtstart.strftime("%A, %d %b")
+		hStart = dtstart.strftime("%H:%M")
+		hEnd = dtend.strftime("%H:%M")
+		return descr,dStart,hStart,hEnd
+
+def uni_ics(urlfile):
+	with urllib.request.urlopen(urlfile) as u:
+		cal = vobject.readOne(u.read().decode('utf8'))
+		data = []
+		for vevent in cal.vevent_list:
+			event = {'what':vevent.summary.value,'when':vevent.dtstart.value}
+			data.append(event)
+		return data
+
+def parse_event(event):
+	what = event['what']
+	when_str = str(event['when'])
+	raw_when = datetime.strptime(when_str[:len(when_str)-6],'%Y-%m-%d %H:%M:%S')
+	when = raw_when.strftime("%A, %d %b %H:%M")
+	return bold(what)+' '+brackets(when)
+
+def from_to(diaSale,horaSale,horaLlega):
+	return '\nsale el '+bold(diaSale)+' a las '+bold(horaSale)+', llega a las '+horaLlega
+
+def message(text):
+	bot.send_message(chat_id = bot.chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
+	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+'\n'+text+'\n')
 
 def bold(text):
 	return '*'+str(text)+'*'
@@ -30,59 +72,18 @@ def bold(text):
 def brackets(text):
 	return '(_'+str(text)+'_)'
 
-def from_to(start,end):
-	#TODO2: return '\nsale: '+str(diasale)+' '+bold(horasale)+',\nllega: '+str(diasale)+' '+bold(horallega)
-	return '\nsale: '+str(start)+',\nllega: '+str(end)
-
-def bus_ics(file):
-	with open(file, encoding="utf-8") as f:
-		cal = vobject.readOne(f.read())
-		descr = cal.vevent.summary.value
-		dtstart = cal.vevent.dtstart.value #TODO3: parsear fecha (con bold(weekday))
-		dtend = cal.vevent.dtend.value #TODO3: parsear fecha (con bold(weekday))
-		#TODO2: tmstart, tmend
-		return descr,dtstart,dtend#TODO2:,tmstart,tmend
-
-def uni_ics(urlfile):
-	with urllib.request.urlopen(urlfile) as u:
-		cal = vobject.readOne(u.read().decode('utf8'))
-		#TODO1: timezone
-		#TODO1: change_tz(cal, PyICU.ICUtzinfo.getInstance('2'), PyICU.ICUtzinfo.getDefault())
-		data = []
-		#TODO1: cal.serialize(data)
-		for vevent in cal.vevent_list:
-			event = {'what':vevent.summary.value,'when':vevent.dtstart.value}
-			data.append(event)
-		return data
-
-def tg_bus(bot, update):
-	try:
-		viaje, diasale, diallega = bus_ics('download.ics') #TODO: horasale, horallega
-		message(bold(viaje)+from_to(diasale,diallega))
-		#TODO2: from_to(diasale,horasale,diallega,horallega)
-	except (IndexError, ValueError):
-		update.message.reply_text("uso: /bus")
-
-def tg_uni(bot, update):
-	try:
-		url = '**https://calendar.google.com/calendar/ical/aurlfromgooglecalendar/basic.ics**'
-		data = uni_ics(url)
-		for event in data:
-			message(bold(event['what'])+' '+brackets(event['when']))
-	except (IndexError, ValueError):
-		update.message.reply_text("uso: /uni")
-
 def main():
-	# @quetalvamichico_bot
-	updater = Updater(token='**123456789:tg-token-main-bot**')
-	dispatcher = updater.dispatcher
-	dispatcher.add_handler(CommandHandler('uni', tg_uni))
-	dispatcher.add_handler(CommandHandler('bus', tg_bus))
-	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+' - init @quetalvamichico_bot')
+
+	# @user_bot
+	updater = Updater(token=tkn)
+	updater.dispatcher.add_handler(CommandHandler('uni', tg_uni))
+	updater.dispatcher.add_handler(CommandHandler('bus', tg_bus))
+
+	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+' - init @user_bot')
 	updater.start_polling()
 	updater.idle()
 
-#TODO4: ping (avisa cuando llega a casa)
+#TODO: ping (avisa cuando llega a casa)
 
 if __name__ == '__main__':
 	main()
