@@ -30,6 +30,7 @@ def msg(bot,update,args):
 	try:
 		# OJO: la función message es de @user_bot, así que los mensajes llegan allí
 		message(update.message.text[4:]) # elimina '/msg '
+		print('[>] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S'),update.message.text)
 	except (IndexError, ValueError):
 		update.message.reply_text("uso: /msg <mensaje>")
 

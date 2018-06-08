@@ -3,17 +3,24 @@
 # EJECUTAR CON:
 # nohup python3 quetalvamichico_bot.py >> quetalvamichico_bot.log &
 
+#TODO: testar en condiciones reales
+
 import urllib.request
 import vobject
 import locale
 from datetime import datetime
+from time import sleep
 from telegram import Bot, ParseMode
 from telegram.ext import Updater, CommandHandler
+import subprocess
+from threading import Thread
 
 locale.setlocale(locale.LC_TIME, 'es_ES.utf8') # para tener 'lunes' en lugar de 'Monday'
 tkn = '==123456789:tg-token-USER-BOT=='
 bot = Bot(token=tkn)
 bot.chat_id = '==998877665==' #user-chatId
+myLocalIP = '==192.168.X.X=='
+weekendOut = False
 
 def tg_bus(bot,update):
 	try:
@@ -65,7 +72,7 @@ def from_to(diaSale,horaSale,horaLlega):
 
 def message(text):
 	bot.send_message(chat_id = bot.chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
-	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+'\n'+text+'\n')
+	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S'),text)
 
 def bold(text):
 	return '*'+str(text)+'*'
@@ -73,18 +80,38 @@ def bold(text):
 def brackets(text):
 	return '(_'+str(text)+'_)'
 
-def main():
+def pinging():
+	global weekendOut
+	while True:
+		p = subprocess.Popen(["ping", "-q", "-c", "3", myLocalIP], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		droppedPackets = p.wait()
 
+		if not droppedPackets and weekendOut:
+			print("[*] -",datetime.now().strftime('%a, %d %b %Y %H:%M:%S'),myLocalIP+" ha llegado a casa")
+			message("ha llegado a casa")
+			weekendOut = False
+		sleep(10) # secs
+
+def main():
+	global weekendOut
 	# @user_bot
 	updater = Updater(token=tkn)
 	updater.dispatcher.add_handler(CommandHandler('uni', tg_uni))
 	updater.dispatcher.add_handler(CommandHandler('bus', tg_bus))
 
-	print('[*] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+' - init @user_bot')
-	updater.start_polling()
-	updater.idle()
+	print('[#] - '+datetime.now().strftime('%a, %d %b %Y %H:%M:%S')+' - init @user_bot')
+	Thread(target=updater.start_polling).start()
+	Thread(target=pinging).start()
 
-#TODO: ping (avisa cuando llega a casa)
+	while True:
+		viaje, dSale, hSale, hLlega = bus_ics('download.ics') # próximo viaje
+		print(dSale, hSale)
+		# si es más tarde de la hora de salida (el viaje es de ida a casa):
+		if (datetime.now().day>=int(dSale[len(dSale)-6:len(dSale)-4]) and
+		datetime.now().hour>=int(hSale[:1]) and	datetime.now().minute>=int(hSale[3:5])):
+			weekendOut = True
+			print("[*] -",datetime.now().strftime('%a, %d %b %Y %H:%M:%S'),"weekendOut =",weekendOut)
+		sleep(300)
 
 if __name__ == '__main__':
 	main()
