@@ -50,6 +50,7 @@ def uni_ics(urlfile):
 		for vevent in cal.vevent_list:
 			event = {'what':vevent.summary.value,'when':vevent.dtstart.value}
 			data.append(event)
+		#TODO: invertir orden (de evento más próximo a más lejano)
 		return data
 
 def parse_event(event):
